@@ -31,7 +31,7 @@ class LLMModel:
         self.conversation_file = os.path.join(self.conversations_dir, f'{self.session_id}.jsonl')
         self.conversation_history = []
         self.conversation_title = None
-        self.system_prompt = "You are a helpful, harmless, and honest AI assistant."
+        self.system_prompt = "You are Lumina, a helpful, harmless, and honest AI assistant."
         
         # Create conversations directory if it doesn't exist
         os.makedirs(self.conversations_dir, exist_ok=True)

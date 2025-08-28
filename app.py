@@ -264,6 +264,46 @@ def delete_conversation(session_id):
     except Exception as e:
         return jsonify({'error': f'Error deleting conversation: {str(e)}'}), 500
 
+@app.route('/conversations/<session_id>/history', methods=['GET'])
+def get_conversation_history(session_id):
+    """Get the full conversation history for a session"""
+    try:
+        conversations_dir = './conversations'
+        conversation_file = os.path.join(conversations_dir, f'{session_id}.jsonl')
+        
+        if not os.path.exists(conversation_file):
+            return jsonify({'error': 'Conversation not found'}), 404
+        
+        messages = []
+        title = None
+        
+        with open(conversation_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    entry = json.loads(line)
+                    
+                    # Get title from first entry
+                    if title is None and "title" in entry:
+                        title = entry["title"]
+                    
+                    # Collect messages (skip title-only entries)
+                    if "role" in entry and "content" in entry:
+                        messages.append({
+                            "role": entry["role"],
+                            "content": entry["content"],
+                            "timestamp": entry.get("timestamp", "")
+                        })
+        
+        return jsonify({
+            'session_id': session_id,
+            'title': title,
+            'messages': messages
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Error fetching conversation history: {str(e)}'}), 500
+
 if __name__ == '__main__':
     print("Starting Flask app...")
     print("Model will load in background. Check /status endpoint to see when ready.")

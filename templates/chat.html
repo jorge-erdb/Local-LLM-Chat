@@ -30,7 +30,7 @@
         }
         
         .sidebar-header {
-            padding: 1.4rem 1.5rem;
+            padding: 1.6rem 1.5rem;
             border-bottom: 1px solid #2a2a2a;
         }
         
@@ -145,6 +145,7 @@
             line-height: 1.3;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -720,6 +721,7 @@
         // Initial status check and load conversations
         checkStatus();
         loadConversations();
+        loadCurrentConversationHistory();
         
         // Load conversations list
         async function loadConversations() {
@@ -821,6 +823,47 @@
             }
         }
         
+        async function loadCurrentConversationHistory() {
+            try {
+                // Get current session ID from status
+                const statusResponse = await fetch('/status');
+                const statusData = await statusResponse.json();
+                
+                if (!statusData.session_id || statusData.session_id === 'No session') {
+                    return; // No active session yet
+                }
+                
+                // Fetch conversation history
+                const historyResponse = await fetch(`/conversations/${statusData.session_id}/history`);
+                if (historyResponse.status === 404) {
+                    return; // New conversation, no history yet
+                }
+                
+                const historyData = await historyResponse.json();
+                
+                if (historyData.error) {
+                    console.error('Error loading conversation history:', historyData.error);
+                    return;
+                }
+                
+                // Display the conversation history
+                displayConversationHistory(historyData.messages);
+                
+            } catch (error) {
+                console.error('Error loading current conversation history:', error);
+            }
+        }
+        
+        function displayConversationHistory(messages) {
+            // Clear existing messages except welcome message
+            clearMessagesUI();
+            
+            // Add each message from history
+            messages.forEach(msg => {
+                addMessage(msg.content, msg.role === 'user');
+            });
+        }
+        
         async function switchToConversation(sessionId) {
             try {
                 const response = await fetch(`/conversations/${sessionId}/switch`, {
@@ -835,8 +878,22 @@
                     return;
                 }
                 
-                // Reload the page to load the new conversation
-                window.location.reload();
+                // Load the conversation history without reloading the page
+                clearMessagesUI();
+                
+                // Fetch and display the conversation history
+                const historyResponse = await fetch(`/conversations/${sessionId}/history`);
+                const historyData = await historyResponse.json();
+                
+                if (historyData.error) {
+                    console.error('Error loading conversation history:', historyData.error);
+                } else {
+                    displayConversationHistory(historyData.messages);
+                }
+                
+                // Update UI elements
+                await loadConversations();
+                await checkStatus();
                 
             } catch (error) {
                 console.error('Error switching conversation:', error);
