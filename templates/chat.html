@@ -12,42 +12,100 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #1a1a1a;
-            color: #e1e1e1;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #e5e5e5;
             height: 100vh;
             display: flex;
+            overflow: hidden;
+        }
+        
+        .sidebar {
+            width: 260px;
+            background: #111111;
+            border-right: 1px solid #2a2a2a;
+            display: flex;
             flex-direction: column;
+            position: relative;
+        }
+        
+        .sidebar-header {
+            padding: 1.4rem 1.5rem;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        .sidebar-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #e5e5e5;
+        }
+        
+        .sidebar-content {
+            flex: 1;
+            padding: 1rem;
+        }
+        
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #0f0f0f;
         }
         
         .header {
-            background: #2d2d2d;
-            padding: 1rem;
-            border-bottom: 1px solid #404040;
-            text-align: center;
+            background: #111111;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .header-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #e5e5e5;
         }
         
         .status {
-            padding: 0.5rem;
-            text-align: center;
-            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+            border-radius: 6px;
             transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
         .status.loading {
-            background: #3a3a00;
-            color: #ffff99;
+            background: rgba(251, 191, 36, 0.1);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.2);
         }
         
         .status.ready {
-            background: #003a00;
-            color: #99ff99;
+            background: rgba(34, 197, 94, 0.1);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
         
         .context-info {
-            font-size: 0.8rem;
-            color: #999;
-            margin-left: 1rem;
+            font-size: 0.75rem;
+            color: #9ca3af;
+            margin-left: auto;
         }
         
         .chat-container {
@@ -55,145 +113,180 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            max-width: 800px;
-            margin: 0 auto;
-            width: 100%;
         }
         
         .messages {
             flex: 1;
             overflow-y: auto;
-            padding: 1rem;
+            padding: 2rem;
             scroll-behavior: smooth;
+            background: #0f0f0f;
+        }
+        
+        .messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .messages::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 3px;
+        }
+        
+        .messages::-webkit-scrollbar-thumb:hover {
+            background: #404040;
         }
         
         .message {
-            margin-bottom: 1rem;
+            margin-bottom: 2rem;
             max-width: 100%;
         }
         
         .message.user {
-            text-align: right;
+            display: flex;
+            justify-content: flex-end;
         }
         
         .message.assistant {
-            text-align: left;
+            display: flex;
+            justify-content: flex-start;
         }
         
         .message-content {
-            display: inline-block;
-            padding: 0.75rem 1rem;
-            border-radius: 1rem;
-            max-width: 80%;
+            max-width: 65%;
+            padding: 1rem 1.25rem;
+            border-radius: 12px;
             word-wrap: break-word;
             white-space: pre-wrap;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            justify-self: right;
         }
         
         .message.user .message-content {
-            background: #0084ff;
+            background: #2563eb;
             color: white;
+            border-bottom-right-radius: 4px;
         }
         
         .message.assistant .message-content {
-            background: #3a3a3a;
-            color: #e1e1e1;
+            background: #1a1a1a;
+            color: #e5e5e5;
+            border: 1px solid #2a2a2a;
+            border-bottom-left-radius: 4px;
         }
         
         .input-area {
-            border-top: 1px solid #404040;
-            padding: 1rem;
-            background: #2d2d2d;
-        }
-        
-        .input-container {
-            display: flex;
-            gap: 0.5rem;
-            align-items: flex-end;
+            border-top: 1px solid #2a2a2a;
+            padding: 1.5rem 2rem;
+            background: #111111;
         }
         
         .controls {
             display: flex;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
         }
         
         .clear-btn {
             padding: 0.5rem 1rem;
-            background: #666;
-            color: white;
-            border: none;
+            background: transparent;
+            color: #9ca3af;
+            border: 1px solid #2a2a2a;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: background-color 0.2s;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
         }
         
         .clear-btn:hover:not(:disabled) {
-            background: #777;
+            background: #1a1a1a;
+            color: #e5e5e5;
+            border-color: #404040;
         }
         
         .clear-btn:disabled {
-            background: #444;
+            opacity: 0.5;
             cursor: not-allowed;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
         }
         
         #messageInput {
             flex: 1;
-            min-height: 40px;
+            min-height: 48px;
             max-height: 120px;
-            padding: 0.75rem;
-            border: 1px solid #404040;
-            border-radius: 20px;
+            padding: 0.875rem 1rem;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
             background: #1a1a1a;
-            color: #e1e1e1;
+            color: #e5e5e5;
             resize: none;
             font-family: inherit;
-            font-size: 1rem;
+            font-size: 0.95rem;
             outline: none;
+            transition: all 0.2s ease;
         }
         
         #messageInput:focus {
-            border-color: #0084ff;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        #messageInput::placeholder {
+            color: #6b7280;
         }
         
         #sendBtn {
-            padding: 0.75rem 1.5rem;
-            background: #0084ff;
+            padding: 0.875rem 1.5rem;
+            background: #2563eb;
             color: white;
             border: none;
-            border-radius: 20px;
+            border-radius: 12px;
             cursor: pointer;
-            font-size: 1rem;
-            transition: background-color 0.2s;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
         
         #sendBtn:hover:not(:disabled) {
-            background: #0066cc;
+            background: #1d4ed8;
+            transform: translateY(-1px);
         }
         
         #sendBtn:disabled {
-            background: #666;
+            background: #374151;
             cursor: not-allowed;
+            transform: none;
         }
         
         .typing {
             display: none;
             align-items: center;
-            gap: 0.5rem;
-            color: #999;
-            font-style: italic;
-            margin-bottom: 1rem;
+            gap: 0.75rem;
+            color: #9ca3af;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+            padding-left: 1.25rem;
         }
         
         .typing-indicator {
             display: flex;
-            gap: 2px;
+            gap: 4px;
         }
         
         .typing-dot {
-            width: 6px;
-            height: 6px;
-            background: #666;
+            width: 8px;
+            height: 8px;
+            background: #6b7280;
             border-radius: 50%;
             animation: typing 1.5s infinite;
         }
@@ -213,38 +306,75 @@
             }
             30% {
                 opacity: 1;
-                transform: translateY(-4px);
+                transform: translateY(-3px);
             }
         }
         
         .error {
-            color: #ff6b6b;
-            background: #2a1515;
-            border: 1px solid #4a2525;
-            padding: 0.75rem;
-            border-radius: 8px;
-            margin: 0.5rem 0;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1rem 0;
+            font-size: 0.875rem;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid #2a2a2a;
+                display: none; /* Hide sidebar on mobile for now */
+            }
+            
+            .messages {
+                padding: 1rem;
+            }
+            
+            .input-area {
+                padding: 1rem;
+            }
+            
+            .message-content {
+                max-width: 90%;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🦙 Llama 3.1 Local Chat</h1>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">Local LLM Chat</div>
+        </div>
+        <div class="sidebar-content">
+            <!-- Sidebar content will go here -->
+        </div>
     </div>
     
-    <div class="status loading" id="status">
-        Model loading...
-        <span class="context-info" id="contextInfo" style="display: none;"></span>
-    </div>
-    
-    <div class="chat-container">
-        <div class="messages" id="messages">
-            <div class="message assistant">
-                <div class="message-content">
-                    Welcome! I'm your local Llama 3.1 8B assistant. What can I help you with today?
-                </div>
+    <div class="main-content">
+        <div class="header">
+            <h1 class="header-title">Chat</h1>
+            <div class="status loading" id="status">
+                <div class="status-dot"></div>
+                <span>Model loading...</span>
+                <span class="context-info" id="contextInfo" style="display: none;"></span>
             </div>
         </div>
+        
+        <div class="chat-container">
+            <div class="messages" id="messages">
+                <div class="message assistant">
+                    <div class="message-content">
+                        Welcome! I'm your local LLM assistant. What can I help you with today?
+                    </div>
+                </div>
+            </div>
         
         <div class="typing" id="typing">
             <span>Assistant is thinking</span>
@@ -304,10 +434,10 @@
                 .then(response => response.json())
                 .then(data => {
                     modelReady = data.loaded;
-                    statusDiv.textContent = data.message;
                     
                     if (data.loaded) {
                         statusDiv.className = 'status ready';
+                        statusDiv.innerHTML = '<div class="status-dot"></div><span>Model ready</span>';
                         sendBtn.disabled = false;
                         clearBtn.disabled = false;
                         
@@ -319,6 +449,7 @@
                         }
                     } else {
                         statusDiv.className = 'status loading';
+                        statusDiv.innerHTML = '<div class="status-dot"></div><span>Model loading...</span>';
                         sendBtn.disabled = true;
                         clearBtn.disabled = true;
                         contextInfo.style.display = 'none';
