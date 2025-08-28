@@ -86,7 +86,7 @@ def chat():
 @app.route('/chat/stream', methods=['POST'])
 def chat_stream():
     """Handle streaming chat messages"""
-    if not model_loaded:
+    if not llm_model.is_loaded:
         return jsonify({
             'error': 'Model not loaded yet. Please wait.',
             'loaded': False
@@ -109,7 +109,7 @@ def chat_stream():
         
         return Response(
             generate(),
-            mimetype='text/plain',
+            mimetype='text/event-stream',
             headers={
                 'Cache-Control': 'no-cache',
                 'Connection': 'keep-alive',

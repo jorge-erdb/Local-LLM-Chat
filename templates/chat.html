@@ -384,12 +384,21 @@
             messageInput.value = '';
             messageInput.style.height = 'auto';
             
-            // Disable send button and show typing
+            // Disable send button and show thinking
             sendBtn.disabled = true;
             showTyping();
             
+            // Create assistant message element (initially empty)
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant';
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = '';
+            messageDiv.appendChild(contentDiv);
+            
             try {
-                const response = await fetch('/chat', {
+                // Start streaming request immediately but don't show content yet
+                const response = await fetch('/chat/stream', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -397,17 +406,80 @@
                     body: JSON.stringify({ message: message })
                 });
                 
-                const data = await response.json();
-                
-                hideTyping();
-                
-                if (data.error) {
-                    showError(data.error);
-                } else {
-                    addMessage(data.response, false);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Network error');
                 }
                 
+                // Show thinking animation for 2 seconds
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Hide thinking and show the message container
+                hideTyping();
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                
+                // Start reading the stream and display with typewriter effect
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let tokenQueue = [];
+                let isTyping = false;
+                
+                // Start the typewriter display function
+                const startTypewriter = async () => {
+                    isTyping = true;
+                    while (isTyping || tokenQueue.length > 0) {
+                        if (tokenQueue.length > 0) {
+                            const token = tokenQueue.shift();
+                            await typewriterToken(contentDiv, token);
+                        } else {
+                            await new Promise(resolve => setTimeout(resolve, 10)); // Small wait
+                        }
+                    }
+                };
+                
+                // Start typewriter in parallel
+                const typewriterPromise = startTypewriter();
+                
+                // Read stream and queue tokens
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) break;
+                    
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep incomplete line in buffer
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.error) {
+                                    messageDiv.remove();
+                                    showError(data.error);
+                                    isTyping = false;
+                                    return;
+                                } else if (data.done) {
+                                    isTyping = false;
+                                    break;
+                                } else if (data.token) {
+                                    tokenQueue.push(data.token);
+                                }
+                            } catch (e) {
+                                console.error('Error parsing SSE data:', e);
+                            }
+                        }
+                    }
+                }
+                
+                isTyping = false;
+                await typewriterPromise;
+                
             } catch (error) {
+                messageDiv.remove();
                 hideTyping();
                 showError('Network error: ' + error.message);
             }
@@ -419,6 +491,25 @@
             
             // Update context info after each message
             checkStatus();
+        }
+        
+        async function typewriterToken(element, token) {
+            // Add each character of the token with delay
+            for (let i = 0; i < token.length; i++) {
+                element.textContent += token[i];
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, 50)); // 0.05 second delay per character
+            }
+        }
+        
+        async function typewriterEffect(element, text) {
+            element.textContent = '';
+            
+            for (let i = 0; i < text.length; i++) {
+                element.textContent += text[i];
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                await new Promise(resolve => setTimeout(resolve, 50)); // 0.05 second delay
+            }
         }
         
         async function clearConversation() {
