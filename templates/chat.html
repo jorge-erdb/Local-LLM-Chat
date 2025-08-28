@@ -43,6 +43,163 @@
         .sidebar-content {
             flex: 1;
             padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            overflow: hidden;
+        }
+        
+        .sidebar-actions {
+            flex-shrink: 0;
+        }
+        
+        .new-chat-btn {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s ease;
+        }
+        
+        .new-chat-btn:hover {
+            background: #1d4ed8;
+            transform: translateY(-1px);
+        }
+        
+        .new-chat-btn span {
+            font-size: 1.25rem;
+            font-weight: bold;
+        }
+        
+        .conversations-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            padding: 0 0.25rem;
+        }
+        
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .conversations-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .conversations-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        .conversations-list::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 2px;
+        }
+        
+        .conversation-item {
+            padding: 0.75rem 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            position: relative;
+        }
+        
+        .conversation-item:hover {
+            background: #1a1a1a;
+            border-color: #2a2a2a;
+        }
+        
+        .conversation-item.active {
+            background: #1a1a1a;
+            border-color: #2563eb;
+        }
+        
+        .conversation-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #e5e5e5;
+            margin-bottom: 0.25rem;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .conversation-meta {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .conversation-time {
+            flex: 1;
+        }
+        
+        .conversation-actions {
+            display: flex;
+            gap: 0.25rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .conversation-item:hover .conversation-actions {
+            opacity: 1;
+        }
+        
+        .delete-btn {
+            padding: 0.25rem;
+            background: transparent;
+            color: #ef4444;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+        
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+        
+        .loading-conversations {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.875rem;
+        }
+        
+        .no-conversations {
+            padding: 2rem 1rem;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.875rem;
         }
         
         .main-content {
@@ -65,6 +222,34 @@
             font-size: 1.25rem;
             font-weight: 600;
             color: #e5e5e5;
+        }
+        
+        .header-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .session-info {
+            font-size: 0.75rem;
+            color: #9ca3af;
+            background: rgba(156, 163, 175, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        
+        .session-title {
+            font-weight: 500;
+            color: #e5e5e5;
+            font-size: 0.8rem;
+        }
+        
+        .session-id {
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            opacity: 0.7;
         }
         
         .status {
@@ -376,17 +561,34 @@
             <div class="sidebar-title">Local LLM Chat</div>
         </div>
         <div class="sidebar-content">
-            <!-- Sidebar content will go here -->
+            <div class="sidebar-actions">
+                <button id="newChatBtn" class="new-chat-btn">
+                    <span>+</span> New Chat
+                </button>
+            </div>
+            
+            <div class="conversations-section">
+                <h3 class="section-title">Recent Conversations</h3>
+                <div id="conversationsList" class="conversations-list">
+                    <div class="loading-conversations">Loading conversations...</div>
+                </div>
+            </div>
         </div>
     </div>
     
     <div class="main-content">
         <div class="header">
             <h1 class="header-title">Chat</h1>
-            <div class="status loading" id="status">
-                <div class="status-dot"></div>
-                <span>Model loading...</span>
-                <span class="context-info" id="contextInfo" style="display: none;"></span>
+            <div class="header-info">
+                <div class="session-info" id="sessionInfo" style="display: none;">
+                    <div class="session-title" id="sessionTitle" style="display: none;"></div>
+                    <span class="session-id">Session: <span id="sessionId">-</span></span>
+                </div>
+                <div class="status loading" id="status">
+                    <div class="status-dot"></div>
+                    <span>Model loading...</span>
+                    <span class="context-info" id="contextInfo" style="display: none;"></span>
+                </div>
             </div>
         </div>
         
@@ -431,6 +633,11 @@
         const statusDiv = document.getElementById('status');
         const contextInfo = document.getElementById('contextInfo');
         const typingIndicator = document.getElementById('typing');
+        const sessionInfo = document.getElementById('sessionInfo');
+        const sessionId = document.getElementById('sessionId');
+        const sessionTitle = document.getElementById('sessionTitle');
+        const newChatBtn = document.getElementById('newChatBtn');
+        const conversationsList = document.getElementById('conversationsList');
         
         let modelReady = false;
         
@@ -450,6 +657,7 @@
         
         sendBtn.addEventListener('click', sendMessage);
         clearBtn.addEventListener('click', clearConversation);
+        newChatBtn.addEventListener('click', startNewChat);
         
         // Check model status
         function checkStatus() {
@@ -457,6 +665,21 @@
                 .then(response => response.json())
                 .then(data => {
                     modelReady = data.loaded;
+                    
+                    // Update session info
+                    if (data.session_id && data.session_id !== 'No session') {
+                        sessionId.textContent = data.session_id.substring(0, 8) + '...';
+                        
+                        // Update title if available
+                        if (data.title) {
+                            sessionTitle.textContent = data.title;
+                            sessionTitle.style.display = 'block';
+                        } else {
+                            sessionTitle.style.display = 'none';
+                        }
+                        
+                        sessionInfo.style.display = 'block';
+                    }
                     
                     if (data.loaded) {
                         statusDiv.className = 'status ready';
@@ -494,8 +717,172 @@
             }
         }, 2000);
         
-        // Initial status check
+        // Initial status check and load conversations
         checkStatus();
+        loadConversations();
+        
+        // Load conversations list
+        async function loadConversations() {
+            try {
+                const response = await fetch('/conversations');
+                const data = await response.json();
+                
+                if (data.error) {
+                    conversationsList.innerHTML = '<div class="no-conversations">Error loading conversations</div>';
+                    return;
+                }
+                
+                displayConversations(data.conversations, data.current_session);
+            } catch (error) {
+                console.error('Error loading conversations:', error);
+                conversationsList.innerHTML = '<div class="no-conversations">Error loading conversations</div>';
+            }
+        }
+        
+        function displayConversations(conversations, currentSessionId) {
+            if (conversations.length === 0) {
+                conversationsList.innerHTML = '<div class="no-conversations">No conversations yet</div>';
+                return;
+            }
+            
+            conversationsList.innerHTML = conversations.map(conv => {
+                const isActive = conv.session_id === currentSessionId;
+                const timeAgo = formatTimeAgo(conv.last_activity);
+                
+                return `
+                    <div class="conversation-item ${isActive ? 'active' : ''}" 
+                         data-session-id="${conv.session_id}"
+                         onclick="switchToConversation('${conv.session_id}')">
+                        <div class="conversation-title">${conv.title}</div>
+                        <div class="conversation-meta">
+                            <span class="conversation-time">${timeAgo}</span>
+                            <div class="conversation-actions">
+                                <button class="delete-btn" 
+                                        onclick="event.stopPropagation(); deleteConversation('${conv.session_id}')"
+                                        ${isActive ? 'style="display: none;"' : ''}
+                                        title="Delete conversation">
+                                    ×
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function formatTimeAgo(timestamp) {
+            if (!timestamp) return 'Unknown';
+            
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            
+            return date.toLocaleDateString();
+        }
+        
+        async function startNewChat() {
+            try {
+                newChatBtn.disabled = true;
+                newChatBtn.textContent = 'Creating...';
+                
+                const response = await fetch('/conversations/new', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error starting new chat: ' + data.error);
+                    return;
+                }
+                
+                // Clear current messages
+                clearMessagesUI();
+                
+                // Reload conversations and status
+                await loadConversations();
+                await checkStatus();
+                
+            } catch (error) {
+                console.error('Error starting new chat:', error);
+                alert('Error starting new chat');
+            } finally {
+                newChatBtn.disabled = false;
+                newChatBtn.innerHTML = '<span>+</span> New Chat';
+            }
+        }
+        
+        async function switchToConversation(sessionId) {
+            try {
+                const response = await fetch(`/conversations/${sessionId}/switch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error switching conversation: ' + data.error);
+                    return;
+                }
+                
+                // Reload the page to load the new conversation
+                window.location.reload();
+                
+            } catch (error) {
+                console.error('Error switching conversation:', error);
+                alert('Error switching conversation');
+            }
+        }
+        
+        async function deleteConversation(sessionId) {
+            if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/conversations/${sessionId}/delete`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert('Error deleting conversation: ' + data.error);
+                    return;
+                }
+                
+                // Reload conversations list
+                await loadConversations();
+                
+            } catch (error) {
+                console.error('Error deleting conversation:', error);
+                alert('Error deleting conversation');
+            }
+        }
+        
+        function clearMessagesUI() {
+            // Clear all messages except welcome message
+            const messages = messagesContainer.querySelectorAll('.message');
+            messages.forEach((msg, index) => {
+                if (index > 0) { // Keep first message (welcome)
+                    msg.remove();
+                }
+            });
+            
+            // Clear any errors
+            const errors = messagesContainer.querySelectorAll('.error');
+            errors.forEach(error => error.remove());
+        }
         
         function addMessage(content, isUser = false) {
             const messageDiv = document.createElement('div');
@@ -660,8 +1047,9 @@
                 sendBtn.disabled = false;
             }
             
-            // Update context info after each message
+            // Update context info and conversations after each message
             checkStatus();
+            loadConversations();
         }
         
         async function typewriterToken(element, token) {

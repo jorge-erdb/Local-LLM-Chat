@@ -1,8 +1,11 @@
 from llama_cpp import Llama
 import os
+import json
+import uuid
+from datetime import datetime
 
 class LLMModel:
-    def __init__(self):
+    def __init__(self, session_id=None):
         # Model Parameters
         self.MODEL_PATH = './LLM/Llama-3.1-8B-Instruct-Q5_K_M.gguf'
         self.N_GPU_LAYERS = 16
@@ -22,9 +25,19 @@ class LLMModel:
         self.llm = None
         self.is_loaded = False
         
-        # Conversation history management
+        # Session and conversation management
+        self.session_id = session_id or str(uuid.uuid4())
+        self.conversations_dir = './conversations'
+        self.conversation_file = os.path.join(self.conversations_dir, f'{self.session_id}.jsonl')
         self.conversation_history = []
+        self.conversation_title = None
         self.system_prompt = "You are a helpful, harmless, and honest AI assistant."
+        
+        # Create conversations directory if it doesn't exist
+        os.makedirs(self.conversations_dir, exist_ok=True)
+        
+        # Load existing conversation history
+        self.load_conversation_history()
     
     def load_model(self):
         """Load the LLM model"""
@@ -60,13 +73,189 @@ class LLMModel:
             print(f"Error loading model: {e}")
             return False
     
+    def load_conversation_history(self):
+        """Load conversation history from JSONL file"""
+        self.conversation_history = []
+        self.conversation_title = None
+        if os.path.exists(self.conversation_file):
+            try:
+                with open(self.conversation_file, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            entry = json.loads(line)
+                            # Load title from first entry (if available)
+                            if self.conversation_title is None and "title" in entry:
+                                self.conversation_title = entry["title"]
+                            
+                            # Only load the role and content for conversation context
+                            if "role" in entry and "content" in entry:
+                                self.conversation_history.append({
+                                    "role": entry["role"],
+                                    "content": entry["content"]
+                                })
+            except Exception as e:
+                print(f"Error loading conversation history: {e}")
+                self.conversation_history = []
+    
+    def generate_title_from_message(self, message):
+        """Generate a conversation title from the first user message"""
+        # Take first 50 characters and clean it up
+        title = message.strip()[:50]
+        
+        # Remove newlines and extra spaces
+        title = ' '.join(title.split())
+        
+        # If it's too short, use a default
+        if len(title) < 10:
+            title = "New Conversation"
+        
+        # Add ellipsis if truncated
+        if len(message.strip()) > 50:
+            title += "..."
+            
+        return title
+    
+    def save_title_to_file(self):
+        """Save or update the conversation title"""
+        if not self.conversation_title:
+            return
+            
+        try:
+            # Read existing content
+            lines = []
+            if os.path.exists(self.conversation_file):
+                with open(self.conversation_file, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+            
+            # Check if first line already has title
+            title_exists = False
+            if lines:
+                try:
+                    first_entry = json.loads(lines[0].strip())
+                    if "title" in first_entry:
+                        title_exists = True
+                except:
+                    pass
+            
+            if not title_exists:
+                # Insert title as first line
+                title_entry = {
+                    "session_id": self.session_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "title": self.conversation_title
+                }
+                
+                with open(self.conversation_file, 'w', encoding='utf-8') as f:
+                    f.write(json.dumps(title_entry, ensure_ascii=False) + '\n')
+                    for line in lines:
+                        f.write(line)
+                        
+        except Exception as e:
+            print(f"Error saving title to file: {e}")
+
+    def save_message_to_file(self, role, content):
+        """Save a single message to the JSONL file"""
+        try:
+            entry = {
+                "session_id": self.session_id,
+                "timestamp": datetime.now().isoformat(),
+                "role": role,
+                "content": content
+            }
+            
+            with open(self.conversation_file, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+        except Exception as e:
+            print(f"Error saving message to file: {e}")
+    
     def add_to_history(self, role, content):
-        """Add a message to conversation history"""
+        """Add a message to conversation history and save to file"""
         self.conversation_history.append({"role": role, "content": content})
+        self.save_message_to_file(role, content)
+        
+        # Generate title from first user message
+        if role == "user" and not self.conversation_title and len(self.conversation_history) <= 2:
+            self.conversation_title = self.generate_title_from_message(content)
+            self.save_title_to_file()
     
     def clear_history(self):
-        """Clear conversation history"""
+        """Clear conversation history and delete the session file"""
         self.conversation_history = []
+        self.conversation_title = None
+        try:
+            if os.path.exists(self.conversation_file):
+                os.remove(self.conversation_file)
+        except Exception as e:
+            print(f"Error deleting conversation file: {e}")
+    
+    def get_session_info(self):
+        """Get information about the current session"""
+        return {
+            "session_id": self.session_id,
+            "conversation_file": self.conversation_file,
+            "file_exists": os.path.exists(self.conversation_file),
+            "title": self.conversation_title
+        }
+    
+    @staticmethod
+    def list_all_conversations(conversations_dir='./conversations'):
+        """List all conversation files with their titles and metadata"""
+        conversations = []
+        
+        if not os.path.exists(conversations_dir):
+            return conversations
+            
+        try:
+            for filename in os.listdir(conversations_dir):
+                if filename.endswith('.jsonl'):
+                    session_id = filename[:-6]  # Remove .jsonl extension
+                    filepath = os.path.join(conversations_dir, filename)
+                    
+                    try:
+                        # Read first few lines to get title and basic info
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            lines = list(f)
+                            
+                        if not lines:
+                            continue
+                            
+                        # Parse first line to get title and timestamp
+                        first_line = json.loads(lines[0].strip())
+                        title = first_line.get('title', 'Untitled Conversation')
+                        created_at = first_line.get('timestamp', '')
+                        
+                        # Count messages (exclude title line)
+                        message_count = len([line for line in lines[1:] if line.strip()])
+                        
+                        # Get last message timestamp
+                        last_timestamp = created_at
+                        if len(lines) > 1:
+                            try:
+                                last_line = json.loads(lines[-1].strip())
+                                last_timestamp = last_line.get('timestamp', created_at)
+                            except:
+                                pass
+                        
+                        conversations.append({
+                            'session_id': session_id,
+                            'title': title,
+                            'created_at': created_at,
+                            'last_activity': last_timestamp,
+                            'message_count': message_count,
+                            'file_path': filepath
+                        })
+                        
+                    except Exception as e:
+                        print(f"Error reading conversation {filename}: {e}")
+                        continue
+                        
+        except Exception as e:
+            print(f"Error listing conversations: {e}")
+            
+        # Sort by last activity (most recent first)
+        conversations.sort(key=lambda x: x.get('last_activity', ''), reverse=True)
+        return conversations
     
     def get_conversation_prompt(self, user_input):
         """Build full conversation prompt with history"""
