@@ -107,7 +107,7 @@ class LLMModel:
             new_prompt = self.get_conversation_prompt("")
             estimated_tokens = self.estimate_token_count(new_prompt)
     
-    def generate_response(self, user_input, max_tokens=512):
+    def generate_response(self, user_input, max_tokens=-1):
         """Generate response with conversation context"""
         if not self.is_loaded:
             raise Exception("Model not loaded. Call load_model() first.")
@@ -122,7 +122,7 @@ class LLMModel:
             
             response = self.llm(
                 prompt,
-                max_tokens=max_tokens if max_tokens > 0 else (self.MAX_TOKENS if self.MAX_TOKENS > 0 else 512),
+                max_tokens=max_tokens if max_tokens > 0 else self.MAX_TOKENS,
                 temperature=self.TEMPERATURE,
                 top_k=self.TOP_K,
                 top_p=self.TOP_P,
@@ -143,7 +143,7 @@ class LLMModel:
         except Exception as e:
             raise Exception(f"Error generating response: {e}")
     
-    def generate_response_stream(self, user_input, max_tokens=512):
+    def generate_response_stream(self, user_input, max_tokens=-1):
         """Generate streaming response with conversation context"""
         if not self.is_loaded:
             raise Exception("Model not loaded. Call load_model() first.")
@@ -158,7 +158,7 @@ class LLMModel:
             
             response = self.llm(
                 prompt,
-                max_tokens=max_tokens if max_tokens > 0 else (self.MAX_TOKENS if self.MAX_TOKENS > 0 else 512),
+                max_tokens=max_tokens if max_tokens > 0 else self.MAX_TOKENS,
                 temperature=self.TEMPERATURE,
                 top_k=self.TOP_K,
                 top_p=self.TOP_P,

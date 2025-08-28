@@ -166,6 +166,29 @@
             justify-self: right;
         }
         
+        .message-content strong {
+            font-weight: 700;
+            color: inherit;
+        }
+        
+        .message-content em {
+            font-style: italic;
+            color: inherit;
+        }
+        
+        .message-content code {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: #f8f8f2;
+        }
+        
+        .message.user .message-content code {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
         .message.user .message-content {
             background: #2563eb;
             color: white;
@@ -480,11 +503,27 @@
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            contentDiv.textContent = content;
+            contentDiv.innerHTML = formatMessage(content);
             
             messageDiv.appendChild(contentDiv);
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function formatMessage(text) {
+            // Convert **text** to bold
+            let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // Convert *text* to italic
+            formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            // Convert `code` to inline code
+            formatted = formatted.replace(/`(.*?)`/g, '<code>$1</code>');
+            
+            // Convert line breaks to <br>
+            formatted = formatted.replace(/\n/g, '<br>');
+            
+            return formatted;
         }
         
         function showError(message) {
@@ -525,6 +564,7 @@
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
             contentDiv.textContent = '';
+            contentDiv.setAttribute('data-raw-text', '');
             messageDiv.appendChild(contentDiv);
             
             try {
@@ -627,7 +667,10 @@
         async function typewriterToken(element, token) {
             // Add each character of the token with delay
             for (let i = 0; i < token.length; i++) {
-                element.textContent += token[i];
+                const currentText = element.getAttribute('data-raw-text') || '';
+                const newText = currentText + token[i];
+                element.setAttribute('data-raw-text', newText);
+                element.innerHTML = formatMessage(newText);
                 messagesContainer.scrollTop = messagesContainer.scrollHeight;
                 await new Promise(resolve => setTimeout(resolve, 50)); // 0.05 second delay per character
             }
