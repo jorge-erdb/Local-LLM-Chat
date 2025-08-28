@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local LLM Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #e1e1e1;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            background: #2d2d2d;
+            padding: 1rem;
+            border-bottom: 1px solid #404040;
+            text-align: center;
+        }
+        
+        .status {
+            padding: 0.5rem;
+            text-align: center;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .status.loading {
+            background: #3a3a00;
+            color: #ffff99;
+        }
+        
+        .status.ready {
+            background: #003a00;
+            color: #99ff99;
+        }
+        
+        .context-info {
+            font-size: 0.8rem;
+            color: #999;
+            margin-left: 1rem;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            scroll-behavior: smooth;
+        }
+        
+        .message {
+            margin-bottom: 1rem;
+            max-width: 100%;
+        }
+        
+        .message.user {
+            text-align: right;
+        }
+        
+        .message.assistant {
+            text-align: left;
+        }
+        
+        .message-content {
+            display: inline-block;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        
+        .message.user .message-content {
+            background: #0084ff;
+            color: white;
+        }
+        
+        .message.assistant .message-content {
+            background: #3a3a3a;
+            color: #e1e1e1;
+        }
+        
+        .input-area {
+            border-top: 1px solid #404040;
+            padding: 1rem;
+            background: #2d2d2d;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .clear-btn {
+            padding: 0.5rem 1rem;
+            background: #666;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s;
+        }
+        
+        .clear-btn:hover:not(:disabled) {
+            background: #777;
+        }
+        
+        .clear-btn:disabled {
+            background: #444;
+            cursor: not-allowed;
+        }
+        
+        #messageInput {
+            flex: 1;
+            min-height: 40px;
+            max-height: 120px;
+            padding: 0.75rem;
+            border: 1px solid #404040;
+            border-radius: 20px;
+            background: #1a1a1a;
+            color: #e1e1e1;
+            resize: none;
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+        }
+        
+        #messageInput:focus {
+            border-color: #0084ff;
+        }
+        
+        #sendBtn {
+            padding: 0.75rem 1.5rem;
+            background: #0084ff;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        
+        #sendBtn:hover:not(:disabled) {
+            background: #0066cc;
+        }
+        
+        #sendBtn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        .typing {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            color: #999;
+            font-style: italic;
+            margin-bottom: 1rem;
+        }
+        
+        .typing-indicator {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .typing-dot {
+            width: 6px;
+            height: 6px;
+            background: #666;
+            border-radius: 50%;
+            animation: typing 1.5s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0%, 60%, 100% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: translateY(-4px);
+            }
+        }
+        
+        .error {
+            color: #ff6b6b;
+            background: #2a1515;
+            border: 1px solid #4a2525;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🦙 Llama 3.1 Local Chat</h1>
+    </div>
+    
+    <div class="status loading" id="status">
+        Model loading...
+        <span class="context-info" id="contextInfo" style="display: none;"></span>
+    </div>
+    
+    <div class="chat-container">
+        <div class="messages" id="messages">
+            <div class="message assistant">
+                <div class="message-content">
+                    Welcome! I'm your local Llama 3.1 8B assistant. What can I help you with today?
+                </div>
+            </div>
+        </div>
+        
+        <div class="typing" id="typing">
+            <span>Assistant is thinking</span>
+            <div class="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <div class="controls">
+                <button id="clearBtn" class="clear-btn" disabled>Clear Conversation</button>
+            </div>
+            <div class="input-container">
+                <textarea 
+                    id="messageInput" 
+                    placeholder="Type your message here... (Shift+Enter for new line)"
+                    rows="1"
+                ></textarea>
+                <button id="sendBtn" disabled>Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const messagesContainer = document.getElementById('messages');
+        const statusDiv = document.getElementById('status');
+        const contextInfo = document.getElementById('contextInfo');
+        const typingIndicator = document.getElementById('typing');
+        
+        let modelReady = false;
+        
+        // Auto-resize textarea
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+        });
+        
+        // Handle Enter key (Send message, Shift+Enter for new line)
+        messageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+        sendBtn.addEventListener('click', sendMessage);
+        clearBtn.addEventListener('click', clearConversation);
+        
+        // Check model status
+        function checkStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    modelReady = data.loaded;
+                    statusDiv.textContent = data.message;
+                    
+                    if (data.loaded) {
+                        statusDiv.className = 'status ready';
+                        sendBtn.disabled = false;
+                        clearBtn.disabled = false;
+                        
+                        // Update context info
+                        if (data.message_count !== undefined) {
+                            const contextText = `${data.message_count} messages • ${data.context_usage_percent}% context used`;
+                            contextInfo.textContent = contextText;
+                            contextInfo.style.display = 'inline';
+                        }
+                    } else {
+                        statusDiv.className = 'status loading';
+                        sendBtn.disabled = true;
+                        clearBtn.disabled = true;
+                        contextInfo.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Status check error:', error);
+                    statusDiv.textContent = 'Connection error';
+                    statusDiv.className = 'status loading';
+                    sendBtn.disabled = true;
+                });
+        }
+        
+        // Check status every 2 seconds until model is ready
+        const statusInterval = setInterval(() => {
+            checkStatus();
+            if (modelReady) {
+                clearInterval(statusInterval);
+            }
+        }, 2000);
+        
+        // Initial status check
+        checkStatus();
+        
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.textContent = message;
+            messagesContainer.appendChild(errorDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function showTyping() {
+            typingIndicator.style.display = 'flex';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+        
+        function hideTyping() {
+            typingIndicator.style.display = 'none';
+        }
+        
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || !modelReady) return;
+            
+            // Add user message
+            addMessage(message, true);
+            
+            // Clear input
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            
+            // Disable send button and show typing
+            sendBtn.disabled = true;
+            showTyping();
+            
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+                
+                const data = await response.json();
+                
+                hideTyping();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    addMessage(data.response, false);
+                }
+                
+            } catch (error) {
+                hideTyping();
+                showError('Network error: ' + error.message);
+            }
+            
+            // Re-enable send button if model is ready
+            if (modelReady) {
+                sendBtn.disabled = false;
+            }
+            
+            // Update context info after each message
+            checkStatus();
+        }
+        
+        async function clearConversation() {
+            if (!modelReady) return;
+            
+            clearBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/clear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    // Clear messages except the welcome message
+                    const messages = messagesContainer.querySelectorAll('.message');
+                    messages.forEach((msg, index) => {
+                        if (index > 0) { // Keep first message (welcome)
+                            msg.remove();
+                        }
+                    });
+                    
+                    // Clear any errors
+                    const errors = messagesContainer.querySelectorAll('.error');
+                    errors.forEach(error => error.remove());
+                    
+                    // Update status
+                    checkStatus();
+                }
+                
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            }
+            
+            if (modelReady) {
+                clearBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
