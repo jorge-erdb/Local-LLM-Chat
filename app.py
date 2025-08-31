@@ -304,6 +304,28 @@ def get_conversation_history(session_id):
     except Exception as e:
         return jsonify({'error': f'Error fetching conversation history: {str(e)}'}), 500
 
+@app.route('/search', methods=['POST'])
+def search_conversations():
+    """Search through all conversations"""
+    try:
+        data = request.get_json()
+        query = data.get('query', '').strip()
+        max_results = data.get('max_results', 10)
+        
+        if not query:
+            return jsonify({'error': 'Query parameter required'}), 400
+        
+        results = LLMModel.search_conversations(query, max_results=max_results)
+        
+        return jsonify({
+            'query': query,
+            'results': results,
+            'total_found': len(results)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Error searching conversations: {str(e)}'}), 500
+
 if __name__ == '__main__':
     print("Starting Flask app...")
     print("Model will load in background. Check /status endpoint to see when ready.")

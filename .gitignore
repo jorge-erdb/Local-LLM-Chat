@@ -5,3 +5,5 @@
 /venv
 /CLAUDE.md
 /conversations
+/setup_memory.py
+/system_prompt.txt

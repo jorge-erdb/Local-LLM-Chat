@@ -3,6 +3,8 @@ import os
 import json
 import uuid
 from datetime import datetime
+from memory_analyzer import MemoryAnalyzer
+from memory_search import MemorySearch
 
 class LLMModel:
     def __init__(self, session_id=None):
@@ -31,13 +33,36 @@ class LLMModel:
         self.conversation_file = os.path.join(self.conversations_dir, f'{self.session_id}.jsonl')
         self.conversation_history = []
         self.conversation_title = None
-        self.system_prompt = "You are Lumina, a helpful, harmless, and honest AI assistant."
+        self.system_prompt = """"""
         
         # Create conversations directory if it doesn't exist
         os.makedirs(self.conversations_dir, exist_ok=True)
         
+        # Initialize memory system
+        self.memory_analyzer = MemoryAnalyzer()
+        self.memory_search = MemorySearch()
+        
         # Load existing conversation history
         self.load_conversation_history()
+    
+    
+    
+    def get_conversation_prompt(self, user_input):
+        """Build full conversation prompt with history in Llama 3.1 format"""
+        # Start with system prompt
+        prompt = f"<|start_header_id|>system<|end_header_id|>\n{self.system_prompt}<|eot_id|>"
+        
+        # Add conversation history
+        for msg in self.conversation_history:
+            prompt += f"<|start_header_id|>{msg['role']}<|end_header_id|>\n{msg['content']}<|eot_id|>"
+        
+        # Add current user input
+        prompt += f"<|start_header_id|>user<|end_header_id|>\n{user_input}<|eot_id|>"
+        
+        # Start assistant response
+        prompt += "<|start_header_id|>assistant<|end_header_id|>\n"
+        
+        return prompt
     
     def load_model(self):
         """Load the LLM model"""
@@ -178,6 +203,17 @@ class LLMModel:
         if role == "user" and not self.conversation_title and len(self.conversation_history) <= 2:
             self.conversation_title = self.generate_title_from_message(content)
             self.save_title_to_file()
+        
+        # Add to memory system
+        message_index = len(self.conversation_history)
+        message_data = {
+            "role": role,
+            "content": content,
+            "timestamp": datetime.now().isoformat()
+        }
+        self.memory_analyzer.add_new_message(
+            self.session_id, message_index, message_data, self.conversation_title
+        )
     
     def clear_history(self):
         """Clear conversation history and delete the session file"""
@@ -257,22 +293,72 @@ class LLMModel:
         conversations.sort(key=lambda x: x.get('last_activity', ''), reverse=True)
         return conversations
     
-    def get_conversation_prompt(self, user_input):
-        """Build full conversation prompt with history"""
-        # Start with system prompt
-        prompt = f"<|start_header_id|>system<|end_header_id|>\n{self.system_prompt}<|eot_id|>"
+    def detect_memory_query(self, user_input):
+        """Detect if the user input references past conversations or contains /recall"""
+        # Check for explicit /recall command
+        if '/recall' in user_input.lower():
+            return True
         
-        # Add conversation history
-        for msg in self.conversation_history:
-            prompt += f"<|start_header_id|>{msg['role']}<|end_header_id|>\n{msg['content']}<|eot_id|>"
+        # Check for memory trigger words
+        memory_triggers = []
         
-        # Add current user input
-        prompt += f"<|start_header_id|>user<|end_header_id|>\n{user_input}<|eot_id|>"
+        """'remember', 'recall', 'what did', 'before', 'earlier', 'previously',
+            'last time', 'you said', 'we talked', 'mentioned', 'told me',
+            'my name', 'favorite', 'story', 'chapter'"""
+
+        user_lower = user_input.lower()
+        return any(trigger in user_lower for trigger in memory_triggers)
+    
+    def inject_memory_context(self, user_input):
+        """Search for relevant memory and inject it into the user prompt if needed"""
+        if not self.detect_memory_query(user_input):
+            return user_input
         
-        # Start assistant response
-        prompt += "<|start_header_id|>assistant<|end_header_id|>\n"
+        # Extract search query after /recall command or use full input
+        search_query = user_input
+        if '/recall' in user_input.lower():
+            user_lower = user_input.lower()
+            recall_index = user_lower.find('/recall')
+            query_part = user_input[recall_index + len('/recall'):].strip()
+            search_query = query_part if query_part else user_input.replace('/recall', '').strip()
         
-        return prompt
+        # Use enhanced memory search
+        search_results = self.memory_search.search_memory(search_query, max_results=3)
+        
+        if not search_results:
+            clean_input = user_input.replace('/recall', '').strip()
+            return clean_input  # Just return clean input, no "not found" message
+        
+        # Build enhanced prompt with memory context
+        memory_context = "\n[MEMORY: Relevant information from previous conversations]\n"
+        for i, result in enumerate(search_results, 1):
+            memory_context += f"\n{i}. From '{result['conversation_title']}' (relevance: {result['relevance_score']:.1f}):\n"
+            
+            # Show context messages with clear formatting
+            for msg in result['context_messages']:
+                role_name = "You" if msg['role'] == 'user' else "Me"
+                indicator = " ★" if msg.get('is_match') else ""
+                memory_context += f"   {role_name}: {msg['content']}{indicator}\n"
+            
+            # Add metadata if useful
+            metadata = result.get('metadata', {})
+            if metadata.get('entities'):
+                memory_context += f"   [Key info: {', '.join(metadata['entities'])}]\n"
+        
+        memory_context += "\n[END MEMORY]\n\n"
+        
+        # Clean query and combine
+        clean_query = user_input.replace('/recall', '').strip()
+        return memory_context + clean_query
+
+    @staticmethod 
+    def search_conversations(query, conversations_dir='./conversations', max_results=10):
+        """Search through conversations using memory system (legacy compatibility)"""
+        # Use memory search system for better results
+        from memory_search import MemorySearch
+        memory_search = MemorySearch()
+        return memory_search.search_memory(query, max_results)
+    
     
     def estimate_token_count(self, text):
         """Rough estimation of token count (1 token ≈ 4 chars for English)"""
@@ -302,12 +388,15 @@ class LLMModel:
             raise Exception("Model not loaded. Call load_model() first.")
         
         try:
+            # Inject memory context if needed
+            enhanced_input = self.inject_memory_context(user_input)
+            
             # Build conversation prompt
-            prompt = self.get_conversation_prompt(user_input)
+            prompt = self.get_conversation_prompt(enhanced_input)
             
             # Trim history if needed
             self.trim_history_if_needed(prompt)
-            prompt = self.get_conversation_prompt(user_input)
+            prompt = self.get_conversation_prompt(enhanced_input)
             
             response = self.llm(
                 prompt,
@@ -332,18 +421,57 @@ class LLMModel:
         except Exception as e:
             raise Exception(f"Error generating response: {e}")
     
+    def process_function_calls(self, text):
+        """Process function calls in the response text"""
+        import re
+        
+        # Find function calls in the text
+        function_pattern = r'<function_call>\s*search_memory\("([^"]+)"\)\s*</function_call>'
+        matches = re.findall(function_pattern, text)
+        
+        processed_text = text
+        
+        for query in matches:
+            # Execute the search
+            search_results = self.search_conversations(query)
+            
+            # Format results for the model
+            if search_results:
+                results_text = f"\n\n[SEARCH RESULTS for '{query}']\n"
+                for i, result in enumerate(search_results[:5], 1):  # Limit to top 5 results
+                    results_text += f"\nResult {i} (from '{result['conversation_title']}'):\n"
+                    for msg in result['context_messages']:
+                        role_prefix = "User" if msg['role'] == 'user' else "Assistant"
+                        results_text += f"{role_prefix}: {msg['content']}\n"
+                    results_text += f"Relevance: {result['relevance_score']}\n"
+                results_text += "[END SEARCH RESULTS]\n\n"
+                
+                # Replace the function call with the results
+                function_call = f'<function_call>\nsearch_memory("{query}")\n</function_call>'
+                processed_text = processed_text.replace(function_call, results_text)
+            else:
+                # No results found
+                no_results = f"\n\n[SEARCH RESULTS for '{query}']\nNo relevant information found in previous conversations.\n[END SEARCH RESULTS]\n\n"
+                function_call = f'<function_call>\nsearch_memory("{query}")\n</function_call>'
+                processed_text = processed_text.replace(function_call, no_results)
+        
+        return processed_text
+
     def generate_response_stream(self, user_input, max_tokens=-1):
-        """Generate streaming response with conversation context"""
+        """Generate streaming response with conversation context and function calling"""
         if not self.is_loaded:
             raise Exception("Model not loaded. Call load_model() first.")
         
         try:
+            # Inject memory context if needed
+            enhanced_input = self.inject_memory_context(user_input)
+            
             # Build conversation prompt
-            prompt = self.get_conversation_prompt(user_input)
+            prompt = self.get_conversation_prompt(enhanced_input)
             
             # Trim history if needed
             self.trim_history_if_needed(prompt)
-            prompt = self.get_conversation_prompt(user_input)
+            prompt = self.get_conversation_prompt(enhanced_input)
             
             response = self.llm(
                 prompt,
@@ -357,7 +485,7 @@ class LLMModel:
                 stream=True
             )
             
-            # Collect full response for history
+            # Stream response tokens
             full_response = ""
             
             for output in response:
