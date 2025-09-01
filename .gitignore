@@ -8,3 +8,5 @@
 /setup_memory.py
 /system_prompt.txt
 /memory
+memory/index.json
+memory/memory.jsonl
