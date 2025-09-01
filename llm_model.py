@@ -33,7 +33,7 @@ class LLMModel:
         self.conversation_file = os.path.join(self.conversations_dir, f'{self.session_id}.jsonl')
         self.conversation_history = []
         self.conversation_title = None
-        self.system_prompt = """"""
+        self.system_prompt = "You are an AI assistant"
         
         # Create conversations directory if it doesn't exist
         os.makedirs(self.conversations_dir, exist_ok=True)
@@ -323,7 +323,7 @@ class LLMModel:
             search_query = query_part if query_part else user_input.replace('/recall', '').strip()
         
         # Use enhanced memory search
-        search_results = self.memory_search.search_memory(search_query, max_results=3)
+        search_results = self.memory_search.search_memory(search_query, max_results=10)
         
         if not search_results:
             clean_input = user_input.replace('/recall', '').strip()
@@ -438,7 +438,7 @@ class LLMModel:
             # Format results for the model
             if search_results:
                 results_text = f"\n\n[SEARCH RESULTS for '{query}']\n"
-                for i, result in enumerate(search_results[:5], 1):  # Limit to top 5 results
+                for i, result in enumerate(search_results[:10], 1):  # Limit to top 10 results
                     results_text += f"\nResult {i} (from '{result['conversation_title']}'):\n"
                     for msg in result['context_messages']:
                         role_prefix = "User" if msg['role'] == 'user' else "Assistant"
@@ -485,13 +485,61 @@ class LLMModel:
                 stream=True
             )
             
-            # Stream response tokens
+            # Stream response tokens and handle function calls
             full_response = ""
+            buffer = ""
+            function_call_active = False
             
             for output in response:
                 token = output['choices'][0]['text']
-                full_response += token
-                yield token
+                buffer += token
+                
+                # Check if we're starting a function call
+                if "<function_call>" in buffer and not function_call_active:
+                    function_call_active = True
+                    # Yield everything before the function call
+                    pre_function = buffer.split("<function_call>")[0]
+                    if pre_function:
+                        full_response += pre_function
+                        yield pre_function
+                    buffer = "<function_call>" + buffer.split("<function_call>")[1]
+                
+                # Check if we're ending a function call
+                if function_call_active and "</function_call>" in buffer:
+                    function_call_active = False
+                    
+                    # Extract the complete function call
+                    function_call_text = buffer.split("</function_call>")[0] + "</function_call>"
+                    remaining_buffer = buffer.split("</function_call>")[1] if len(buffer.split("</function_call>")) > 1 else ""
+                    
+                    # Process the function call
+                    processed_result = self.process_function_calls(function_call_text)
+                    
+                    # Add processed result to full response and yield it
+                    full_response += processed_result
+                    yield processed_result
+                    
+                    # Continue with remaining buffer
+                    buffer = remaining_buffer
+                    if buffer:
+                        full_response += buffer
+                        yield buffer
+                        buffer = ""
+                
+                # If no function call is active, yield the token normally
+                elif not function_call_active:
+                    full_response += token
+                    yield token
+                    buffer = ""  # Clear buffer since we yielded the token
+            
+            # Handle any remaining buffer
+            if buffer and not function_call_active:
+                full_response += buffer
+                yield buffer
+            elif function_call_active:
+                # If we end with an incomplete function call, just add it as text
+                full_response += buffer
+                yield buffer
             
             # Add to conversation history after streaming is complete
             self.add_to_history("user", user_input)

@@ -1,0 +1,2 @@
+llama-cpp-python[cuda] --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu129
+flask
