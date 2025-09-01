@@ -10,3 +10,4 @@
 /memory
 memory/index.json
 memory/memory.jsonl
+/.gitignore
